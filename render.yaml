@@ -3,8 +3,10 @@ services:
     name: cdb-monitor
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python app.py"
+    buildCommand: |
+      pip install -r requirements.txt
+      playwright install
+    startCommand: python app.py
     envVars:
       - key: DATABASE_URL
         sync: false

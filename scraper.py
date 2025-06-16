@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
+import psycopg2
 from db import get_db_connection
+import telebot
 
 # Lista competitor e relative URL promo
 sites = {
@@ -13,11 +15,9 @@ sites = {
     "Svinando": "https://www.svinando.com/"
 }
 
-import telebot
-
-# Telegram config (rimane il tuo token e chat id)
+# Configurazione Telegram
 TELEGRAM_TOKEN = "7901232274:AAFM3HMotVhmEj80AyUwnTAxuZ6VCpSnXY4"
-TELEGRAM_CHAT_IDS = ["7963309279"]  # Qui puoi aggiungere altri chat ID se vuoi
+TELEGRAM_CHAT_IDS = ["7963309279"]
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -25,7 +25,6 @@ def send_telegram_message(message):
     for chat_id in TELEGRAM_CHAT_IDS:
         bot.send_message(chat_id, message)
 
-# ATTENZIONE: qui ora per ogni sito usiamo funzioni separate
 def parse_vinocom():
     url = sites["Vino.com"]
     response = requests.get(url, timeout=10)
@@ -35,40 +34,30 @@ def parse_vinocom():
         nome = item.select_one("div.product-card-name").text.strip()
         prezzo = item.select_one("div.price").text.strip()
         url_prodotto = "https://www.vino.com" + item['href']
-        products.append((nome, url_prodotto, prezzo, ''))
+        products.append((nome, url_prodotto, prezzo))
     return products
 
-# Per tutti gli altri siti (Bernabei, Tannico ecc.) il principio è lo stesso.
-# Per semplicità iniziamo ora solo con Vino.com completo.
-# Gli altri li aggiungiamo con lo stesso schema identico (appena mi dai l'ok proseguiamo).
-
-def run_scraper():
+def main():
     conn = get_db_connection()
     cur = conn.cursor()
-    nuovi_prodotti = []
 
-    # Per ora partiamo da Vino.com
-    for nome, url in sites.items():
-        if nome == "Vino.com":
-            prodotti = parse_vinocom()
-            for prodotto in prodotti:
-                nome_prodotto, url_prodotto, prezzo_attuale, prezzo_pieno = prodotto
+    prodotti = parse_vinocom()
+    nuovi = []
 
-                cur.execute('SELECT * FROM promotions WHERE url_prodotto = %s', (url_prodotto,))
-                if not cur.fetchone():
-                    cur.execute(
-                        'INSERT INTO promotions (sito, nome_prodotto, url_prodotto, prezzo_attuale, prezzo_pieno) VALUES (%s, %s, %s, %s, %s)',
-                        (nome, nome_prodotto, url_prodotto, prezzo_attuale, prezzo_pieno)
-                    )
-                    conn.commit()
-                    nuovi_prodotti.append(f"{nome}: {nome_prodotto} — {prezzo_attuale}")
+    for nome, url_prodotto, prezzo in prodotti:
+        cur.execute("SELECT 1 FROM promozioni WHERE prodotto = %s", (nome,))
+        if cur.fetchone() is None:
+            cur.execute("INSERT INTO promozioni (prodotto, url, prezzo) VALUES (%s, %s, %s)", (nome, url_prodotto, prezzo))
+            nuovi.append(f"{nome} - {prezzo}\n{url_prodotto}")
 
-    cur.close()
+    conn.commit()
     conn.close()
 
-    if nuovi_prodotti:
-        message = "Nuove promozioni:\n" + "\n".join(nuovi_prodotti)
-        send_telegram_message(message)
-        return message
+    if nuovi:
+        messaggio = "📢 Nuove promozioni trovate:\n\n" + "\n\n".join(nuovi)
+        send_telegram_message(messaggio)
     else:
-        return "Nessuna nuova promozione trovata."
+        send_telegram_message("✅ Nessuna nuova promozione trovata oggi.")
+
+if __name__ == "__main__":
+    main()

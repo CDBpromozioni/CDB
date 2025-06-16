@@ -1,19 +1,12 @@
-import requests
-from bs4 import BeautifulSoup
 import psycopg2
-from db import get_db_connection
+import os
 import telebot
+from playwright.sync_api import sync_playwright
 
-# Lista competitor e relative URL promo
-sites = {
-    "Vino.com": "https://www.vino.com/price/promo",
-    "Bernabei": "https://www.bernabei.it/offerte-in-corso",
-    "Tannico": "https://www.tannico.it/collections/tutte-le-offerte",
-    "CallMeWine": "https://www.callmewine.com/en/pages/wines-on-offer",
-    "Signorvino": "https://www.signorvino.com/it/vini/tutte_le_promo/",
-    "Wineshop": "https://www.wineshop.it/it/",
-    "Svinando": "https://www.svinando.com/"
-}
+# Configurazione database
+def get_db_connection():
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    return psycopg2.connect(DATABASE_URL)
 
 # Configurazione Telegram
 TELEGRAM_TOKEN = "7901232274:AAFM3HMotVhmEj80AyUwnTAxuZ6VCpSnXY4"
@@ -25,28 +18,32 @@ def send_telegram_message(message):
     for chat_id in TELEGRAM_CHAT_IDS:
         bot.send_message(chat_id, message)
 
+# Funzione scraping su Vino.com con Playwright
 def parse_vinocom():
-    url = "https://www.vino.com/price/promo"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.content, "html.parser")
+    prodotti = []
 
-    prodotti_trovati = []
-    prodotti_html = soup.find_all("div", class_="ProductCardCardWrapper")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto("https://www.vino.com/price/promo", timeout=60000)
+        page.wait_for_timeout(5000)  # aspetta 5 secondi per il caricamento dinamico
 
-    for prodotto in prodotti_html:
-        try:
-            nome = prodotto.find("div", class_="product-card-name").get_text(strip=True)
-            prezzo = prodotto.find("div", class_="ProductCardPrice__StyledPriceValue").get_text(strip=True)
-            link = "https://www.vino.com" + prodotto.find("a", class_="product-card-link")['href']
+        items = page.query_selector_all("a.product-card-link")
 
-            prodotti_trovati.append((nome, prezzo, link))
-        except Exception as e:
-            print("Errore parsing vino.com:", e)
+        for item in items:
+            try:
+                nome = item.query_selector("div.product-card-name").inner_text().strip()
+                prezzo = item.query_selector("div.ProductCardPrice__StyledPriceValue").inner_text().strip()
+                link = "https://www.vino.com" + item.get_attribute("href")
+                prodotti.append((nome, prezzo, link))
+            except Exception as e:
+                print("Errore parsing:", e)
 
-    return prodotti_trovati
+        browser.close()
 
+    return prodotti
+
+# Funzione principale
 def main():
     conn = get_db_connection()
     cur = conn.cursor()

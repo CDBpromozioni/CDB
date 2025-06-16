@@ -26,16 +26,26 @@ def send_telegram_message(message):
         bot.send_message(chat_id, message)
 
 def parse_vinocom():
-    url = sites["Vino.com"]
-    response = requests.get(url, timeout=10)
-    soup = BeautifulSoup(response.text, 'lxml')
-    products = []
-    for item in soup.select("a.product-card-link"):
-        nome = item.select_one("div.product-card-name").text.strip()
-        prezzo = item.select_one("div.price").text.strip()
-        url_prodotto = "https://www.vino.com" + item['href']
-        products.append((nome, url_prodotto, prezzo))
-    return products
+    url = "https://www.vino.com/price/promo"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    prodotti_trovati = []
+    prodotti_html = soup.find_all("div", class_="ProductCardCardWrapper")
+
+    for prodotto in prodotti_html:
+        try:
+            nome = prodotto.find("div", class_="product-card-name").get_text(strip=True)
+            prezzo = prodotto.find("div", class_="ProductCardPrice__StyledPriceValue").get_text(strip=True)
+            link = "https://www.vino.com" + prodotto.find("a", class_="product-card-link")['href']
+
+            prodotti_trovati.append((nome, prezzo, link))
+        except Exception as e:
+            print("Errore parsing vino.com:", e)
+
+    return prodotti_trovati
 
 def main():
     conn = get_db_connection()

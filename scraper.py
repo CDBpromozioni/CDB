@@ -54,11 +54,11 @@ def main():
     prodotti = parse_vinocom()
     nuovi = []
 
-    for nome, url_prodotto, prezzo in prodotti:
+    for nome, prezzo, link in prodotti:
         cur.execute("SELECT 1 FROM promozioni WHERE prodotto = %s", (nome,))
         if cur.fetchone() is None:
-            cur.execute("INSERT INTO promozioni (prodotto, url, prezzo) VALUES (%s, %s, %s)", (nome, url_prodotto, prezzo))
-            nuovi.append(f"{nome} - {prezzo}\n{url_prodotto}")
+            cur.execute("INSERT INTO promozioni (prodotto, prezzo, link) VALUES (%s, %s, %s)", (nome, prezzo, link))
+            nuovi.append(f"{nome} - {prezzo}\n🔗 {link}")
 
     conn.commit()
     conn.close()

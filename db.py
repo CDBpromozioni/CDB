@@ -13,9 +13,10 @@ def create_table():
         CREATE TABLE IF NOT EXISTS promotions (
             id SERIAL PRIMARY KEY,
             sito TEXT,
-            titolo TEXT,
-            url TEXT,
-            prezzo TEXT,
+            nome_prodotto TEXT,
+            url_prodotto TEXT,
+            prezzo_attuale TEXT,
+            prezzo_pieno TEXT,
             data TIMESTAMP DEFAULT NOW()
         )
     ''')

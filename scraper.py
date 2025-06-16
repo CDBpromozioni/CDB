@@ -13,15 +13,17 @@ sites = {
     "Svinando": "https://www.svinando.com/"
 }
 
-# Telegram config (restiamo sempre con il tuo bot attivo)
+import telebot
+
+# Telegram config (rimane il tuo token e chat id)
 TELEGRAM_TOKEN = "7901232274:AAFM3HMotVhmEj80AyUwnTAxuZ6VCpSnXY4"
-TELEGRAM_CHAT_IDS = ["7963309279"]  # Puoi aggiungere altri ID qui
+TELEGRAM_CHAT_IDS = ["7963309279"]  # Qui puoi aggiungere altri chat ID se vuoi
+
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 def send_telegram_message(message):
-    url_base = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
     for chat_id in TELEGRAM_CHAT_IDS:
-        data = {'chat_id': chat_id, 'text': message}
-        requests.post(url_base, data=data)
+        bot.send_message(chat_id, message)
 
 # ATTENZIONE: qui ora per ogni sito usiamo funzioni separate
 def parse_vinocom():

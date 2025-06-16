@@ -5,7 +5,7 @@ services:
     plan: free
     buildCommand: |
       pip install -r requirements.txt
-      playwright install
+      playwright install --with-deps
     startCommand: python app.py
     envVars:
       - key: DATABASE_URL

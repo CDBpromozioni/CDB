@@ -3,9 +3,7 @@ services:
     name: cdb-monitor
     env: python
     plan: free
-    buildCommand: |
-      pip install -r requirements.txt
-      playwright install --with-deps
+    buildCommand: ./render-build.sh
     startCommand: python app.py
     envVars:
       - key: DATABASE_URL

@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from db import get_db_connection
 
+# Lista competitor
 sites = {
     "Vino.com": "https://vino.com/",
     "Bernabei": "https://bernabei.it/",
@@ -12,9 +13,20 @@ sites = {
     "Svinando": "https://svinando.com/"
 }
 
+# Telegram config
+TELEGRAM_TOKEN = "7901232274:AAFM3HMotVhmEj80AyUwnTAxuZ6VCpSnXY4"
+TELEGRAM_CHAT_ID = "7963309279"
+
+def send_telegram_message(message):
+    url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
+    data = {'chat_id': TELEGRAM_CHAT_ID, 'text': message}
+    requests.post(url, data=data)
+
 def run_scraper():
     conn = get_db_connection()
     cur = conn.cursor()
+
+    new_promotions = []
 
     for name, url in sites.items():
         try:
@@ -29,10 +41,17 @@ def run_scraper():
                     (name, title, url, 'N/A')
                 )
                 conn.commit()
+                new_promotions.append(f"{name}: {title}")
 
         except Exception as e:
             print(f"Errore su {name}: {str(e)}")
 
     cur.close()
     conn.close()
-    return "Scraping completato."
+
+    if new_promotions:
+        message = "Nuove promozioni rilevate:\n" + "\n".join(new_promotions)
+        send_telegram_message(message)
+        return message
+    else:
+        return "Nessuna nuova promozione trovata."

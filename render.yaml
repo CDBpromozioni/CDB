@@ -1,10 +1,10 @@
 services:
-  - type: worker
-    name: competitor-monitor
+  - type: web
+    name: cdb-monitor
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python scraper.py"
+    startCommand: "python app.py"
     envVars:
       - key: DATABASE_URL
         sync: false
